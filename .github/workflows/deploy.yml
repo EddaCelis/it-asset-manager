@@ -18,10 +18,7 @@ jobs:
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          # 1. Step into the target deployment workspace
           cd /home/ubuntu
-
-          # 2. Clone or update your project files onto the server
           if [ ! -d "it-asset-manager" ]; then
             git clone https://github.com/EddaCelis/it-asset-manager.git
           fi
@@ -29,7 +26,6 @@ jobs:
           git reset --hard
           git pull origin main
 
-          # 3. Ensure the production PostgreSQL database container is alive
           if [ ! "$(docker ps -q -f name=prod-postgres-db)" ]; then
             if [ "$(docker ps -aq -f name=prod-postgres-db)" ]; then
               docker rm -f prod-postgres-db
@@ -44,14 +40,10 @@ jobs:
               postgres:15-alpine
           fi
 
-          # 4. Clean up old app container builds to free your custom port
           docker rm -f it-asset-app || true
           docker rmi -f it-asset-app-image || true
-
-          # 5. Build your app's Dockerfile directly on the EC2 engine
           docker build -t it-asset-app-image ./apps/backend
 
-          # 6. Launch your application mapping your custom port assignment (8001)
           docker run -d \
             --name it-asset-app \
             -p 8001:8001 \
