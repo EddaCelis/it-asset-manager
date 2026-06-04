@@ -15,10 +15,13 @@ jobs:
       uses: appleboy/ssh-action@master
       with:
         host: 52.74.115.60
-        username: intern
+        username: intern-e
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          cd /home/intern
+          # 1. Step into your team's personal writable base workspace
+          cd /home/intern-e
+
+          # 2. Securely clone or update your code directory
           if [ ! -d "it-asset-manager" ]; then
             git clone https://github.com/EddaCelis/it-asset-manager.git
           fi
@@ -26,11 +29,12 @@ jobs:
           git reset --hard
           git pull origin main
 
-          if [ ! "$(docker ps -q -f name=prod-postgres-db)" ]; then
-            if [ "$(docker ps -aq -f name=prod-postgres-db)" ]; then
-              docker rm -f prod-postgres-db
+          # 3. Ensure a shared production PostgreSQL container is running on the host
+          if [ ! "$(sudo docker ps -q -f name=prod-postgres-db)" ]; then
+            if [ "$(sudo docker ps -aq -f name=prod-postgres-db)" ]; then
+              sudo docker rm -f prod-postgres-db
             fi
-            docker run -d \
+            sudo docker run -d \
               --name prod-postgres-db \
               -p 5432:5432 \
               -e POSTGRES_USER=admin \
@@ -40,11 +44,15 @@ jobs:
               postgres:15-alpine
           fi
 
-          docker rm -f it-asset-app || true
-          docker rmi -f it-asset-app-image || true
-          docker build -t it-asset-app-image ./apps/backend
+          # 4. Clean up older application builds to free up your custom port assignment
+          sudo docker rm -f it-asset-app || true
+          sudo docker rmi -f it-asset-app-image || true
 
-          docker run -d \
+          # 5. Compile your backend app using the server's Docker engine
+          sudo docker build -t it-asset-app-image ./apps/backend
+
+          # 6. Launch your application container mapping your custom port assignment (8001)
+          sudo docker run -d \
             --name it-asset-app \
             -p 8001:8001 \
             --link prod-postgres-db:db-host \
