@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -16,7 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE_URL = "postgresql://admin:secretpass@localhost:5432/model_registry"
+# Reads the database path from the server system settings, defaulting to localhost for local testing
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://admin:secretpass@localhost:5432/model_registry")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
