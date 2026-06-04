@@ -11,8 +11,14 @@
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
         input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
         button { background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
         button:hover { background-color: #2980b9; }
+        
+        /* 1. Added custom styling for the Offboard / Delete Button */
+        .btn-delete { background-color: #e74c3c; padding: 6px 12px; font-size: 14px; }
+        .btn-delete:hover { background-color: #c0392b; }
+
         .search-box { margin: 20px 0; padding: 15px; background-color: #e8f4f8; border-radius: 4px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
@@ -52,6 +58,7 @@
                     <th>Employee Name</th>
                     <th>Department</th>
                     <th>Hardware Asset</th>
+                    <th>Actions</th> <!-- 2. Added Actions column header -->
                 </tr>
             </thead>
             <tbody id="assetTableBody"></tbody>
@@ -69,14 +76,36 @@
                 const tbody = document.getElementById("assetTableBody");
                 tbody.innerHTML = "";
                 data.forEach(item => {
+                    // 3. Added a new <td> cell mapping the item ID to a delete trigger function
                     tbody.innerHTML += `<tr>
                         <td>${item.id}</td>
                         <td>${item.employee_name}</td>
                         <td>${item.department}</td>
                         <td>${item.assigned_laptop}</td>
+                        <td>
+                            <button class="btn-delete" onclick="deleteAsset(${item.id})">🛑 Offboard</button>
+                        </td>
                     </tr>`;
                 });
             } catch (err) { console.error("Error fetching data:", err); }
+        }
+
+        // 4. Added JavaScript handler function to issue the HTTP DELETE request
+        async function deleteAsset(id) {
+            if (confirm(`Are you sure you want to offboard employee record #${id}?`)) {
+                try {
+                    const res = await fetch(`${API_URL}/${id}`, {
+                        method: "DELETE"
+                    });
+                    if (res.ok) {
+                        fetchAssets(); // Refresh table view records instantly
+                    } else {
+                        alert("Failed to delete the asset registry record.");
+                    }
+                } catch (err) {
+                    console.error("Error deleting asset:", err);
+                }
+            }
         }
 
         document.getElementById("assetForm").addEventListener("submit", async (e) => {

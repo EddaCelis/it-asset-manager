@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from typing import List, Optional
+from fastapi import HTTPException
 
 app = FastAPI(title="IT Asset Manager API")
 
@@ -76,3 +77,18 @@ def get_assets(search: Optional[str] = Query(None), db: Session = Depends(get_db
             )
         )
     return query.all()
+@app.delete("/employees/{employee_id}", status_code=200)
+def delete_employee_asset(employee_id: int, db: Session = Depends(get_db)):
+    # 1. Query the database to find the asset record by its primary key ID
+    db_asset = db.query(EmployeeAssetDB).filter(EmployeeAssetDB.id == employee_id).first()
+    
+    # 2. If the asset record doesn't exist, return a clean 404 error back to the frontend
+    if not db_asset:
+        raise HTTPException(status_code=404, detail="Employee record not found in the registry.")
+    
+    # 3. If found, execute the deletion operation and save changes to the database engine
+    db.delete(db_asset)
+    db.commit()
+    
+    # 4. Send back a confirmation message
+    return {"message": f"Successfully offboarded employee record #{employee_id} and reclaimed assets."}
