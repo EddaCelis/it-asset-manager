@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Corporate IT Asset Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 40px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h1, h2 { color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
+        th { background-color: #1a365d; color: white; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #4a5568; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #2b6cb0; color: white; padding: 12px 20px; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; font-size: 1rem; }
+        button:hover { background-color: #2c5282; }
+        button.delete-btn { background-color: #e53e3e; padding: 6px 12px; width: auto; font-size: 0.85rem; }
+        button.delete-btn:hover { background-color: #c53030; }
+        .badge { background: #edf2f7; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; }
+        .badge-done { background: #c6f6d5; color: #22543d; }
+        .badge-pending { background: #feebc8; color: #744210; }
+        /* Search Box styling */
+        .search-container { background-color: #e2e8f0; padding: 15px; border-radius: 6px; margin-top: 25px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>IT Equipment & Onboarding Tracker</h1>
+    <hr>
+    
+    <h2>Register New Employee Hardware Deployment</h2>
+    <form id="itForm">
+        <div class="form-group">
+            <label>Full Name:</label>
+            <input type="text" id="empName" required placeholder="e.g., Mark Santos">
+        </div>
+        <div class="form-group">
+            <label>Corporate Department:</label>
+            <input type="text" id="empDept" required placeholder="e.g., Engineering">
+        </div>
+        <div class="form-group">
+            <label>Assigned Laptop / Hardware Model:</label>
+            <input type="text" id="empLaptop" required placeholder="e.g., ThinkPad T14">
+        </div>
+        <div class="form-group">
+            <label>Onboarding Security Status:</label>
+            <select id="empStatus">
+                <option value="false">Pending Security Setup</option>
+                <option value="true">Active / Credentials Granted</option>
+            </select>
+        </div>
+        <button type="submit">Assign Assets & Save</button>
+    </form>
+
+    <div class="search-container">
+        <label for="searchBar">🔍 Global Employee Registry Search:</label>
+        <input type="text" id="searchBar" placeholder="Type any Name, Department, or Laptop model to filter records instantly..." oninput="loadEmployees()">
+    </div>
+
+    <h2>Active Corporate Asset Deployments</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Employee Name</th>
+                <th>Department</th>
+                <th>Assigned Hardware</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="itTableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    const API_URL = "http://127.0.0.1:8000/employees";
+
+    // UPDATED READ: Appends query parameters to the API request based on the search bar input
+    async function loadEmployees() {
+        const queryTerm = document.getElementById("searchBar").value;
+        
+        // If the search bar has text, append '?search=yourtext' to the API URL
+        let finalUrl = API_URL;
+        if (queryTerm) {
+            finalUrl += `?search=${encodeURIComponent(queryTerm)}`;
+        }
+
+        try {
+            const response = await fetch(finalUrl);
+            const employees = await response.json();
+            const tbody = document.getElementById("itTableBody");
+            tbody.innerHTML = "";
+
+            employees.forEach(emp => {
+                const statusBadge = emp.is_onboarding_complete 
+                    ? '<span class="badge badge-done">Complete</span>' 
+                    : '<span class="badge badge-pending">Pending</span>';
+
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td><strong># ${emp.id}</strong></td>
+                    <td>${emp.employee_name}</td>
+                    <td>${emp.department}</td>
+                    <td><code>${emp.assigned_laptop}</code></td>
+                    <td>${statusBadge}</td>
+                    <td><button class="delete-btn" onclick="offboardEmployee(${emp.id})">Offboard</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error("Error connecting to data pipeline:", error);
+        }
+    }
+
+    // CREATE
+    document.getElementById("itForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const payload = {
+            employee_name: document.getElementById("empName").value,
+            department: document.getElementById("empDept").value,
+            assigned_laptop: document.getElementById("empLaptop").value,
+            is_onboarding_complete: document.getElementById("empStatus").value === "true"
+        };
+
+        await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        document.getElementById("itForm").reset();
+        loadEmployees();
+    });
+
+    // DELETE
+    async function offboardEmployee(id) {
+        if(confirm("Are you sure you want to offboard this employee?")) {
+            await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+            loadEmployees();
+        }
+    }
+
+    loadEmployees();
+</script>
+</body>
+</html>
