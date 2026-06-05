@@ -5,7 +5,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
-  // 🎯 Hijacking the open backend port (8085) to bypass the AWS firewall restriction
+  // 🎯 Hijacking the open backend port (8085) to bypass AWS firewall restrictions
   const API_URL = 'http://52.74.115.60:8085/employees';
 
   // 1. Fetch current live assets from backend on load
@@ -45,10 +45,10 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '40px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#1a1a1a' }}>
+    <div style={{ padding: '40px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#ffffff' }}>
       <header style={{ borderBottom: '2px solid #eaeaea', paddingBottom: '10px', marginBottom: '30px' }}>
-        <h1 style={{ color: '#1a1a1a', margin: 0 }}>📊 IT Asset Manager Portal (React)</h1>
-        <p style={{ color: '#666', marginTop: '5px' }}>Production Cloud Status: Connected via Mapped Port 3005</p>
+        <h1 style={{ color: '#ffffff', margin: 0 }}>📊 IT Asset Manager Portal (React)</h1>
+        <p style={{ color: '#aaa', marginTop: '5px' }}>Production Cloud Status: Connected via Mapped Port 3005</p>
       </header>
 
       {message && (
@@ -58,48 +58,26 @@ function App() {
       )}
 
       {loading ? (
-        <h3>Loading production systems matrix...</h3>
+        <h3 style={{ color: '#ffffff' }}>Loading production systems matrix...</h3>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           <thead>
             <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
-              <th style={{ padding: '12px' }}>ID</th>
-              <th style={{ padding: '12px' }}>Employee Name</th>
-              <th style={{ padding: '12px' }}>Assigned Asset</th>
-              <th style={{ padding: '12px' }}>Department</th>
-              <th style={{ padding: '12px', textAlign: 'center' }}>Management Actions</th>
+              <th style={{ padding: '12px', color: '#1a1a1a' }}>ID</th>
+              <th style={{ padding: '12px', color: '#1a1a1a' }}>Employee Name</th>
+              <th style={{ padding: '12px', color: '#1a1a1a' }}>Assigned Asset</th>
+              <th style={{ padding: '12px', color: '#1a1a1a' }}>Department</th>
+              <th style={{ padding: '12px', textAlign: 'center', color: '#1a1a1a' }}>Management Actions</th>
             </tr>
           </thead>
           <tbody>
             {employees.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#999' }}>No active asset records logged in database registry.</td>
+                <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#bbb' }}>No active asset records logged in database registry.</td>
               </tr>
             ) : (
               employees.map((emp) => (
                 <tr key={emp.id} style={{ borderBottom: '1px solid #dee2e6' }}>
-                  <td style={{ padding: '12px', fontWeight: 'bold' }}>#{emp.id}</td>
-                  {/* 🔧 Adjusted keys below to accurately match database column models */}
-                  <td style={{ padding: '12px' }}>{emp.employee_name}</td>
-                  {/* To this updated line: */}
-                  <td style={{ padding: '12px' }}><code style={{ background: '#f1f1f1', padding: '4px 8px', borderRadius: '4px', color: '#333' }}>{emp.assigned_laptop}</code></td>
-                  <td style={{ padding: '12px' }}>{emp.department}</td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>
-                    <button 
-                      onClick={() => handleOffboard(emp.id)}
-                      style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }}
-                    >
-                      🛑 Offboard Employee
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
-export default App;
+                  <td style={{ padding: '12px', fontWeight: 'bold', color: '#ffffff' }}>#{emp.id}</td>
+                  <td style={{ padding: '12px', color: '#ffffff' }}>{emp.employee_name}</td>
+                  <td style={{ padding: '12px'
