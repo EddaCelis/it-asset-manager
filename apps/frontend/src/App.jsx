@@ -80,4 +80,28 @@ function App() {
                 <tr key={emp.id} style={{ borderBottom: '1px solid #dee2e6' }}>
                   <td style={{ padding: '12px', fontWeight: 'bold', color: '#ffffff' }}>#{emp.id}</td>
                   <td style={{ padding: '12px', color: '#ffffff' }}>{emp.employee_name}</td>
-                  <td style={{ padding: '12px'
+                  <td style={{ padding: '12px' }}>
+                    <code style={{ background: '#f1f1f1', padding: '4px 8px', borderRadius: '4px', color: '#333', fontWeight: 'bold' }}>
+                      {emp.assigned_laptop}
+                    </code>
+                  </td>
+                  <td style={{ padding: '12px', color: '#ffffff' }}>{emp.department}</td>
+                  <td style={{ padding: '12px', textAlign: 'center' }}>
+                    <button 
+                      onClick={() => handleOffboard(emp.id)}
+                      style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s' }}
+                    >
+                      🛑 Offboard Employee
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+export default App;
