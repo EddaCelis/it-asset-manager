@@ -81,7 +81,8 @@ function App() {
                   <td style={{ padding: '12px', fontWeight: 'bold' }}>#{emp.id}</td>
                   {/* 🔧 Adjusted keys below to accurately match database column models */}
                   <td style={{ padding: '12px' }}>{emp.employee_name}</td>
-                  <td style={{ padding: '12px' }}><code style={{ background: '#f1f1f1', padding: '4px 8px', borderRadius: '4px', color: '#333' }}>{emp.assigned_asset}</code></td>
+                  {/* To this updated line: */}
+                  <td style={{ padding: '12px' }}><code style={{ background: '#f1f1f1', padding: '4px 8px', borderRadius: '4px', color: '#333' }}>{emp.assigned_laptop}</code></td>
                   <td style={{ padding: '12px' }}>{emp.department}</td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
                     <button 
