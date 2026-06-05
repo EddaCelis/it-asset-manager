@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Pull the latest source code from your GitHub repository onto the runner
       - name: Checkout Code Repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up AWS CLI credentials using your repository environment secrets
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -22,7 +20,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-1
 
-      # Step 3: Securely SSH into the EC2 Server and orchestrate the multi-container build
       - name: SSH into EC2 Server and Launch Stack Components
         uses: appleboy/ssh-action@master
         with:
@@ -31,12 +28,38 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/intern-e/it-asset-manager
-            
-            # Synchronize local server folder with the latest GitHub push
             git pull origin main
             
-            # Gracefully stop old containers and remove conflicting networks
-            docker compose down
+            # 1. Clear out any active conflicting containers if they exist
+            docker stop react-frontend fastapi-backend prod-postgres-db || true
+            docker rm react-frontend fastapi-backend prod-postgres-db || true
             
-            # Recompile the React frontend (Node) and FastAPI images, then launch the stack detached (-d)
-            docker compose up --build -d
+            # 2. Ensure an internal bridge network exists for them to talk to each other
+            docker network create asset-network || true
+            
+            # 3. Spin up the Database Layer
+            docker run -d \
+              --name prod-postgres-db \
+              --network asset-network \
+              -p 5432:5432 \
+              -e POSTGRES_USER=admin \
+              -e POSTGRES_PASSWORD=secretpass \
+              -e POSTGRES_DB=model_registry \
+              postgres:15-alpine
+            
+            # 4. Build and Launch the FastAPI Backend
+            docker build -t it-asset-backend ./apps/backend
+            docker run -d \
+              --name fastapi-backend \
+              --network asset-network \
+              -p 8001:8001 \
+              -e DATABASE_URL=postgresql://admin:secretpass@prod-postgres-db:5432/model_registry \
+              it-asset-backend
+            
+            # 5. Build and Launch the React Frontend
+            docker build -t it-asset-frontend ./apps/frontend
+            docker run -d \
+              --name react-frontend \
+              --network asset-network \
+              -p 3000:80 \
+              it-asset-frontend
