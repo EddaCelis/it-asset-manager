@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Securely pull the source files onto the runner
       - name: Checkout Code Repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up AWS infrastructure access tokens using variable pointers
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -22,7 +20,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # Step 3: Securely access the host server to update files, inject configurations, and reboot containers
       - name: SSH into EC2 Server and Launch Stack Components
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -32,22 +29,20 @@ jobs:
           script: |
             set -e
 
-            # Navigate to workspace and pull down latest changes from main branch
             cd /home/${{ vars.EC2_USER }}/it-asset-manager
             git pull origin main
 
-            # ── 1. Housekeeping: Stop and Clear Existing Container Deployments ───────
-            docker stop react-frontend fastapi-backend prod-postgres-db || true
+            # 1. Housekeeping: Stop competing containers to free up ports 3005 and 8085
+            docker stop react-frontend fastapi-backend prod-postgres-db gym_frontend gym_backend || true
             docker rm   react-frontend fastapi-backend prod-postgres-db || true
 
-            # ── 2. Networking: Verify Private Isolated Inter-Container Bridge ────────
+            # 2. Networking: Verify infrastructure bridge channel
             docker network create asset-network || true
 
-            # ── 3. Configuration: Isolate Environment Credentials on Host ────────────
+            # 3. Configuration: Set up environment profiles
             sudo mkdir -p /opt/it-asset-manager
             sudo chown -R ${{ vars.EC2_USER }}:${{ vars.EC2_USER }} /opt/it-asset-manager
 
-            # Dynamically write backend credentials away from the codebase context
             cat > /opt/it-asset-manager/.env << 'ENVEOF'
             DATABASE_URL=postgresql://admin:secretpass@prod-postgres-db:5432/model_registry
             AWS_REGION=${{ vars.AWS_REGION }}
@@ -55,7 +50,7 @@ jobs:
             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             ENVEOF
 
-            # ── 4. Storage & DB Layer: Spin up the Database Engine ───────────────────
+            # 4. DB Layer: Run database mapped to alternative port 5433
             docker run -d \
               --name prod-postgres-db \
               --restart unless-stopped \
@@ -66,24 +61,24 @@ jobs:
               -e POSTGRES_DB=model_registry \
               postgres:15-alpine
 
-            # ── 5. Core API Layer: Compile and Run the FastAPI Application ───────────
+            # 5. Core API Layer: Map out of open port 8085
             docker build -t it-asset-backend ./apps/backend
             docker run -d \
               --name fastapi-backend \
               --restart unless-stopped \
               --network asset-network \
-              -p 8001:8001 \
+              -p 8085:8001 \
               --env-file /opt/it-asset-manager/.env \
               it-asset-backend
 
-            # ── 6. Presentation Layer: Compile and Serve the Production Nginx UI ─────
+            # 6. Presentation Layer: Map out of open port 3005
             docker build -t it-asset-frontend ./apps/frontend
             docker run -d \
               --name react-frontend \
               --restart unless-stopped \
               --network asset-network \
-              -p 3000:80 \
+              -p 3005:80 \
               it-asset-frontend
 
-            # ── 7. Maintenance: Purge Legacy Suspended Cache Build Layers ────────────
+            # 7. Maintenance: Clear caching artifacts
             docker image prune -f

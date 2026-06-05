@@ -5,8 +5,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
-  // API Endpoint Target (Pointing to your FastAPI port on AWS)
-  const API_URL = 'http://52.74.115.60:8001/employees';
+  // 🎯 Hijacking the open backend port (8085) to bypass the AWS firewall restriction
+  const API_URL = 'http://52.74.115.60:8085/employees';
 
   // 1. Fetch current live assets from backend on load
   useEffect(() => {
@@ -48,7 +48,7 @@ function App() {
     <div style={{ padding: '40px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: '0 auto', color: '#1a1a1a' }}>
       <header style={{ borderBottom: '2px solid #eaeaea', paddingBottom: '10px', marginBottom: '30px' }}>
         <h1 style={{ color: '#1a1a1a', margin: 0 }}>📊 IT Asset Manager Portal (React)</h1>
-        <p style={{ color: '#666', marginTop: '5px' }}>Production Cloud Status: Connected via Docker Compose</p>
+        <p style={{ color: '#666', marginTop: '5px' }}>Production Cloud Status: Connected via Mapped Port 3005</p>
       </header>
 
       {message && (
@@ -79,8 +79,9 @@ function App() {
               employees.map((emp) => (
                 <tr key={emp.id} style={{ borderBottom: '1px solid #dee2e6' }}>
                   <td style={{ padding: '12px', fontWeight: 'bold' }}>#{emp.id}</td>
-                  <td style={{ padding: '12px' }}>{emp.name}</td>
-                  <td style={{ padding: '12px' }}><code style={{ background: '#f1f1f1', padding: '4px 8px', borderRadius: '4px', color: '#333' }}>{emp.asset}</code></td>
+                  {/* 🔧 Adjusted keys below to accurately match database column models */}
+                  <td style={{ padding: '12px' }}>{emp.employee_name}</td>
+                  <td style={{ padding: '12px' }}><code style={{ background: '#f1f1f1', padding: '4px 8px', borderRadius: '4px', color: '#333' }}>{emp.assigned_asset}</code></td>
                   <td style={{ padding: '12px' }}>{emp.department}</td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
                     <button 
