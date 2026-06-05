@@ -10,56 +10,80 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Securely pull the source files onto the runner
       - name: Checkout Code Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
+      # Step 2: Set up AWS infrastructure access tokens using variable pointers
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-1
+          aws-region: ${{ vars.AWS_REGION }}
 
+      # Step 3: Securely access the host server to update files, inject configurations, and reboot containers
       - name: SSH into EC2 Server and Launch Stack Components
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 52.74.115.60
-          username: intern-e
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ vars.EC2_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/intern-e/it-asset-manager
+            set -e
+
+            # Navigate to workspace and pull down latest changes from main branch
+            cd /home/${{ vars.EC2_USER }}/it-asset-manager
             git pull origin main
-            
-            # 1. Clear out any active conflicting containers if they exist
+
+            # ── 1. Housekeeping: Stop and Clear Existing Container Deployments ───────
             docker stop react-frontend fastapi-backend prod-postgres-db || true
-            docker rm react-frontend fastapi-backend prod-postgres-db || true
-            
-            # 2. Ensure an internal bridge network exists for them to talk to each other
+            docker rm   react-frontend fastapi-backend prod-postgres-db || true
+
+            # ── 2. Networking: Verify Private Isolated Inter-Container Bridge ────────
             docker network create asset-network || true
-            
-            # 3. Spin up the Database Layer
+
+            # ── 3. Configuration: Isolate Environment Credentials on Host ────────────
+            sudo mkdir -p /opt/it-asset-manager
+            sudo chown -R ${{ vars.EC2_USER }}:${{ vars.EC2_USER }} /opt/it-asset-manager
+
+            # Dynamically write backend credentials away from the codebase context
+            cat > /opt/it-asset-manager/.env << 'ENVEOF'
+            DATABASE_URL=postgresql://admin:secretpass@prod-postgres-db:5432/model_registry
+            AWS_REGION=${{ vars.AWS_REGION }}
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            ENVEOF
+
+            # ── 4. Storage & DB Layer: Spin up the Database Engine ───────────────────
             docker run -d \
               --name prod-postgres-db \
+              --restart unless-stopped \
               --network asset-network \
               -p 5432:5432 \
               -e POSTGRES_USER=admin \
               -e POSTGRES_PASSWORD=secretpass \
               -e POSTGRES_DB=model_registry \
               postgres:15-alpine
-            
-            # 4. Build and Launch the FastAPI Backend
+
+            # ── 5. Core API Layer: Compile and Run the FastAPI Application ───────────
             docker build -t it-asset-backend ./apps/backend
             docker run -d \
               --name fastapi-backend \
+              --restart unless-stopped \
               --network asset-network \
               -p 8001:8001 \
-              -e DATABASE_URL=postgresql://admin:secretpass@prod-postgres-db:5432/model_registry \
+              --env-file /opt/it-asset-manager/.env \
               it-asset-backend
-            
-            # 5. Build and Launch the React Frontend
+
+            # ── 6. Presentation Layer: Compile and Serve the Production Nginx UI ─────
             docker build -t it-asset-frontend ./apps/frontend
             docker run -d \
               --name react-frontend \
+              --restart unless-stopped \
               --network asset-network \
               -p 3000:80 \
               it-asset-frontend
+
+            # ── 7. Maintenance: Purge Legacy Suspended Cache Build Layers ────────────
+            docker image prune -f
