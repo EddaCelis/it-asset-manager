@@ -1,61 +1,42 @@
-name: Deploy IT Asset Manager to AWS EC2
+name: Deploy IT Asset Manager Stack
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout Code Repository
-      uses: actions/checkout@v4
+      # Step 1: Pull the latest source code from your GitHub repository onto the runner
+      - name: Checkout Code Repository
+        uses: actions/checkout@v3
 
-    - name: SSH into EC2 Server and Launch Stack Components
-      uses: appleboy/ssh-action@master
-      with:
-        host: 52.74.115.60
-        username: intern-e
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          # 1. Move into the verified workspace folder
-          cd /home/intern-e
+      # Step 2: Set up AWS CLI credentials using your repository environment secrets
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1
 
-          # 2. Sync repository updates natively without sudo elevation
-          if [ ! -d "it-asset-manager" ]; then
-            git clone https://github.com/EddaCelis/it-asset-manager.git
-          fi
-          cd it-asset-manager
-          git reset --hard
-          git pull origin main
-
-          # 3. Handle the production database container instance natively
-          if [ ! "$(docker ps -q -f name=prod-postgres-db)" ]; then
-            if [ "$(docker ps -aq -f name=prod-postgres-db)" ]; then
-              docker rm -f prod-postgres-db
-            fi
-            docker run -d \
-              --name prod-postgres-db \
-              -p 5432:5432 \
-              -e POSTGRES_USER=admin \
-              -e POSTGRES_PASSWORD=secretpass \
-              -e POSTGRES_DB=model_registry \
-              --restart always \
-              postgres:15-alpine
-          fi
-
-          # 4. Clean up old environment blocks cleanly
-          docker rm -f it-asset-app || true
-          docker rmi -f it-asset-app-image || true
-
-          # 5. Build your app using user-space Docker rules
-          docker build -t it-asset-app-image ./apps/backend
-
-          # 6. Bind and run your custom application port assignment (8001)
-          docker run -d \
-            --name it-asset-app \
-            -p 8001:8001 \
-            --link prod-postgres-db:db-host \
-            -e DATABASE_URL=postgresql://admin:secretpass@db-host:5432/model_registry \
-            --restart always \
-            it-asset-app-image
+      # Step 3: Securely SSH into the EC2 Server and orchestrate the multi-container build
+      - name: SSH into EC2 Server and Launch Stack Components
+        uses: appleboy/ssh-action@master
+        with:
+          host: 52.74.115.60
+          username: intern-e
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/intern-e/it-asset-manager
+            
+            # Synchronize local server folder with the latest GitHub push
+            git pull origin main
+            
+            # Gracefully stop old containers and remove conflicting networks
+            docker compose down
+            
+            # Recompile the React frontend (Node) and FastAPI images, then launch the stack detached (-d)
+            docker compose up --build -d

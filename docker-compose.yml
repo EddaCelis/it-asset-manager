@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # 1. React Frontend Container
+  frontend:
+    build: ./apps/frontend
+    ports:
+      - "3000:80"  # Exposes your React application dashboard on Port 3000
+    depends_on:
+      - backend
+
+  # 2. FastAPI Backend Container
+  backend:
+    build: ./apps/backend
+    ports:
+      - "8001:8001" # Exposes your Python endpoints on Port 8001
+    environment:
+      - DATABASE_URL=postgresql://admin:secretpass@db:5432/model_registry
+    depends_on:
+      - db
+
+  # 3. PostgreSQL Database Container
+  db:
+    image: postgres:15-alpine
+    container_name: prod-postgres-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpass
+      POSTGRES_DB: model_registry
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
