@@ -1,36 +1,42 @@
-version: '3.8'
+name: Deploy IT Asset Manager Stack
 
-services:
-  # 1. React Frontend Container
-  frontend:
-    build: ./apps/frontend
-    ports:
-      - "3000:80"  # Exposes your React application dashboard on Port 3000
-    depends_on:
-      - backend
+on:
+  push:
+    branches:
+      - main
 
-  # 2. FastAPI Backend Container
-  backend:
-    build: ./apps/backend
-    ports:
-      - "8001:8001" # Exposes your Python endpoints on Port 8001
-    environment:
-      - DATABASE_URL=postgresql://admin:secretpass@db:5432/model_registry
-    depends_on:
-      - db
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-  # 3. PostgreSQL Database Container
-  db:
-    image: postgres:15-alpine
-    container_name: prod-postgres-db
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secretpass
-      POSTGRES_DB: model_registry
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    steps:
+      # Step 1: Pull the latest source code from your GitHub repository onto the runner
+      - name: Checkout Code Repository
+        uses: actions/checkout@v3
 
-volumes:
-  postgres_data:
+      # Step 2: Set up AWS CLI credentials using your repository environment secrets
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1
+
+      # Step 3: Securely SSH into the EC2 Server and orchestrate the multi-container build
+      - name: SSH into EC2 Server and Launch Stack Components
+        uses: appleboy/ssh-action@master
+        with:
+          host: 52.74.115.60
+          username: intern-e
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/intern-e/it-asset-manager
+            
+            # Synchronize local server folder with the latest GitHub push
+            git pull origin main
+            
+            # Stop old system layouts using the hyphenated binary path
+            docker-compose down
+            
+            # Rebuild images and launch detached using the hyphenated binary path
+            docker-compose up --build -d
