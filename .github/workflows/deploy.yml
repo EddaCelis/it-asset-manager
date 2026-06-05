@@ -60,7 +60,7 @@ jobs:
               --name prod-postgres-db \
               --restart unless-stopped \
               --network asset-network \
-              -p 5432:5432 \
+              -p 5433:5432 \
               -e POSTGRES_USER=admin \
               -e POSTGRES_PASSWORD=secretpass \
               -e POSTGRES_DB=model_registry \
